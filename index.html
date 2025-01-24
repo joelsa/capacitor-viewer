@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Capacitor Viewer</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+  <main class="max-w-screen-xl mx-auto px-4 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Left Column (Image) -->
+      <div class="flex-1 bg-white rounded-xl shadow-md p-6 flex justify-center items-center">
+        <img 
+          id="plotImage"
+          class="rounded-lg w-full h-auto object-contain"
+          alt="Capacitor Plot"
+        />
+      </div>
+
+      <!-- Right Column (Controls) -->
+      <div class="w-full lg:w-80 space-y-6">
+        <!-- Dielectric Type -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <label
+            for="dielectric"
+            class="block text-lg font-medium text-gray-900 mb-3"
+          >
+            Dielectric Type
+          </label>
+          <select
+            id="dielectric"
+            class="block w-full rounded-lg border-0 py-3 px-4 text-lg
+                   text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300
+                   focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="C0G">C0G</option>
+            <option value="NP0">NP0</option>
+            <option value="X5R">X5R</option>
+            <option value="X6S">X6S</option>
+            <option value="X7R">X7R</option>
+            <option value="X7S">X7S</option>
+            <option value="X8R">X8R</option>
+            <option value="Y5V">Y5V</option>
+            <option value="Z5U">Z5U</option>
+          </select>
+        </div>
+
+        <!-- Footprint -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <label
+            for="footprint"
+            class="block text-lg font-medium text-gray-900 mb-3"
+          >
+            Footprint
+          </label>
+          <select
+            id="footprint"
+            class="block w-full rounded-lg border-0 py-3 px-4 text-lg
+                   text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300
+                   focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="0201">0201</option>
+            <option value="0402">0402</option>
+            <option value="0603" selected>0603</option>
+            <option value="0805">0805</option>
+            <option value="1206">1206</option>
+            <option value="1210">1210</option>
+            <option value="1812">1812</option>
+          </select>
+        </div>
+
+        <!-- Plot Type -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <label
+            for="plotType"
+            class="block text-lg font-medium text-gray-900 mb-3"
+          >
+            Plot Type
+          </label>
+          <select
+            id="plotType"
+            class="block w-full rounded-lg border-0 py-3 px-4 text-lg
+                   text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300
+                   focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="density">Density</option>
+            <option value="scatter">Scatter</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // For each DIELECTRIC, which footprints exist?
+    const validCombinations = {
+      "C0G":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "NP0":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "X5R":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "X6S":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "X7R":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "X7S":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "X8R":  ["0402","0603","0805","1206","1210","1812"], // missing "0201"
+      "Y5V":  ["0201","0402","0603","0805","1206","1210","1812"],
+      "Z5U":  ["0201","0402","0603","0805","1206","1210","1812"]
+    };
+
+    // For each FOOTPRINT, which dielectrics exist?
+    // This is the "reverse" lookup so we can also disable
+    // invalid dielectrics if a user picks a footprint first.
+    const validDielectricsForFootprint = {};
+    for (const dielectric in validCombinations) {
+      validCombinations[dielectric].forEach((foot) => {
+        if (!validDielectricsForFootprint[foot]) {
+          validDielectricsForFootprint[foot] = [];
+        }
+        validDielectricsForFootprint[foot].push(dielectric);
+      });
+    }
+
+    const dielectricSelect = document.getElementById('dielectric');
+    const footprintSelect  = document.getElementById('footprint');
+    const plotTypeSelect   = document.getElementById('plotType');
+    const plotImage        = document.getElementById('plotImage');
+
+    function updateFootprintOptions() {
+      const selectedDielectric = dielectricSelect.value;
+      const validFootprints = validCombinations[selectedDielectric] || [];
+
+      for (let i = 0; i < footprintSelect.options.length; i++) {
+        const opt = footprintSelect.options[i];
+        opt.disabled = !validFootprints.includes(opt.value);
+      }
+
+      // If currently selected footprint is invalid, switch to the first valid one
+      if (!validFootprints.includes(footprintSelect.value)) {
+        footprintSelect.value = validFootprints[0];
+      }
+    }
+
+    function updateDielectricOptions() {
+      const selectedFootprint = footprintSelect.value;
+      const validDielectrics = validDielectricsForFootprint[selectedFootprint] || [];
+
+      for (let i = 0; i < dielectricSelect.options.length; i++) {
+        const opt = dielectricSelect.options[i];
+        opt.disabled = !validDielectrics.includes(opt.value);
+      }
+
+      // If currently selected dielectric is invalid, switch to the first valid one
+      if (!validDielectrics.includes(dielectricSelect.value)) {
+        dielectricSelect.value = validDielectrics[0];
+      }
+    }
+
+    function updateImage() {
+      const dielectric = dielectricSelect.value;
+      const footprint  = footprintSelect.value;
+      const plotType   = plotTypeSelect.value;
+      // With the rename, the image files are named:
+      //   capacitor_{plotType}_{dielectric}_{footprint}.png
+      // e.g. capacitor_density_X7R_0603.png
+      const imagePath = `./data/images/capacitor_${plotType}_${dielectric}_${footprint}.png`;
+      plotImage.src = imagePath;
+    }
+
+    // When user changes dielectric: update footprints accordingly, then update image
+    dielectricSelect.addEventListener('change', () => {
+      updateFootprintOptions();
+      updateImage();
+    });
+
+    // When user changes footprint: update dielectric accordingly, then update image
+    footprintSelect.addEventListener('change', () => {
+      updateDielectricOptions();
+      updateImage();
+    });
+
+    // When user changes plotType, just update the image
+    plotTypeSelect.addEventListener('change', updateImage);
+
+    // On first load, make sure both dropdowns are in sync
+    updateFootprintOptions();  // Might disable some footprints
+    updateDielectricOptions(); // Might disable some dielectrics
+    updateImage();             // Load the correct image
+  </script>
+</body>
+</html>
